@@ -8,14 +8,19 @@ import reports from "../data/sif_classified_reports.json";
 import type {
   SafetyReport,
   SIFLevel,
+  UploadedAnalysis,
 } from "../types";
 
-
-const safetyReports =
+const defaultSafetyReports =
   reports as SafetyReport[];
 
+interface SafetyReportsProps {
+  uploadedAnalysis: UploadedAnalysis | null;
+}
 
-export default function SafetyReports() {
+export default function SafetyReports({
+  uploadedAnalysis,
+}: SafetyReportsProps) {
 
   const [selectedReport, setSelectedReport] =
     useState<SafetyReport | null>(null);
@@ -26,6 +31,8 @@ export default function SafetyReports() {
   const [sifFilter, setSifFilter] =
     useState<"ALL" | SIFLevel>("ALL");
 
+    const safetyReports =
+      uploadedAnalysis?.reports ?? defaultSafetyReports;
 
   const filteredReports =
     useMemo(() => {
@@ -63,7 +70,7 @@ export default function SafetyReports() {
         }
       );
 
-    }, [search, sifFilter]);
+    }, [search, sifFilter, safetyReports]);
 
 
   if (selectedReport) {

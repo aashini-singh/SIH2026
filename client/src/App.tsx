@@ -8,6 +8,7 @@ import SIFAnalysis from "./pages/SIFAnalysis";
 import PrecursorIntelligence from "./pages/PrecursorIntelligence";
 import HSEPriorities from "./pages/HSEPriorities";
 import InterventionMonitoring from "./pages/InterventionMonitoring";
+import type { UploadedAnalysis } from "./types";
 
 const pageInfo: Record<
   string,
@@ -53,6 +54,8 @@ function App() {
   const [activePage, setActivePage] =
     useState("overview");
 
+  const [uploadedAnalysis, setUploadedAnalysis] =
+    useState<UploadedAnalysis | null>(null);
 
   const current =
     pageInfo[activePage];
@@ -61,25 +64,47 @@ function App() {
   const renderPage = () => {
 
   switch (activePage) {
-
     case "overview":
-      return <Overview />;
+      return (
+        <Overview
+          uploadedAnalysis={uploadedAnalysis}
+          onAnalysisComplete={setUploadedAnalysis}
+        />
+      );
 
     case "reports":
-      return <SafetyReports />;
+      return (
+        <SafetyReports
+          uploadedAnalysis={uploadedAnalysis}
+        />
+      );
 
     case "sif":
-      return <SIFAnalysis />;
+      return (
+        <SIFAnalysis
+          uploadedAnalysis={uploadedAnalysis}
+        />
+      );
 
     case "precursors":
-      return <PrecursorIntelligence />;
+      return (
+        <PrecursorIntelligence
+          uploadedAnalysis={uploadedAnalysis}
+        />
+      );
 
     case "priorities":
-      return <HSEPriorities />;
-
+      return (
+        <HSEPriorities
+          uploadedAnalysis={uploadedAnalysis}
+        />
+      );
     case "interventions":
-      return <InterventionMonitoring />;
-
+      return (
+        <InterventionMonitoring
+          uploadedAnalysis={uploadedAnalysis}
+        />
+      );
     default:
       return (
         <div className="coming-soon">

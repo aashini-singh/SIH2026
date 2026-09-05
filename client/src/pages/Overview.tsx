@@ -20,28 +20,50 @@ import type {
   SafetyReport,
   PrecursorPattern,
   HSEPriorityItem,
+  UploadedAnalysis,
 } from "../types";
 
 
-const safetyReports =
-  reports as SafetyReport[];
+  const defaultSafetyReports =
+    reports as SafetyReport[];
 
-const precursorPatterns =
-  patterns as PrecursorPattern[];
+  const defaultPrecursorPatterns =
+    patterns as PrecursorPattern[];
 
-const hsePriorities =
-  priorities as HSEPriorityItem[];
+  const defaultHSEPriorities =
+    priorities as HSEPriorityItem[];
 
-
-export default function Overview() {
+    interface OverviewProps {
+      uploadedAnalysis: UploadedAnalysis | null;
+      onAnalysisComplete: (analysis: UploadedAnalysis) => void;
+    }
+  
+export default function Overview({
+  uploadedAnalysis,
+  onAnalysisComplete,
+}: OverviewProps) {
 
     const [showUploadModal, setShowUploadModal] = useState(false);
-const [selectedFile, setSelectedFile] = useState<File | null>(null);
-const [isDragging, setIsDragging] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+     const safetyReports =
+    uploadedAnalysis?.reports ?? defaultSafetyReports;
 
-const fileInputRef = useRef<HTMLInputElement>(null);
+    const precursorPatterns =
+      uploadedAnalysis?.precursor_patterns ??
+      defaultPrecursorPatterns;
 
-const allowedTypes = [".pdf", ".csv", ".xlsx", ".xls"];
+    const hsePriorities =
+      uploadedAnalysis?.hse_priorities ??
+      defaultHSEPriorities;
+    const allowedTypes = [
+      ".pdf",
+      ".csv",
+      ".xlsx",
+      ".xls",
+    ];
 
 const handleFile = (file: File) => {
   const extension =
@@ -72,6 +94,122 @@ const handleDrop = (
     handleFile(file);
   }
 };
+
+
+  const handleAnalyze = async () => {
+    if (!selectedFile) return;
+
+    try {
+      setIsAnalyzing(true);
+
+      const formData = new FormData();
+
+      formData.append("file", selectedFile);
+
+      const response = await fetch(
+        "http://localhost:5000/api/reports/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+          data?.detail?.message ||
+          "Failed to analyze report"
+        );
+      }
+
+      const normalizedReports: SafetyReport[] =
+        data.reports.map((report: any) => ({
+          ...report,
+
+          sif_classification: {
+            sif_level:
+              report.sif_classification?.sif_level ??
+              "LOW",
+
+            score:
+              report.sif_classification?.score ??
+              report.sif_classification?.sif_score ??
+              0,
+          },
+        }));
+
+      const analysis: UploadedAnalysis = {
+        upload_id: data.upload_id,
+        filename: data.filename,
+        file_type: data.file_type,
+        analyzed_at: data.analyzed_at,
+        report_count: data.report_count,
+
+        reports: normalizedReports,
+        precursor_patterns: data.precursor_patterns,
+        hse_priorities: data.hse_priorities,
+      };
+
+      onAnalysisComplete(analysis);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+          data?.detail?.message ||
+          "Failed to analyze report"
+        );
+      }
+
+      console.log("Analysis completed:", data);
+
+      console.log(
+        "Reports:",
+        data.reports
+      );
+
+      console.log(
+        "Precursor Patterns:",
+        data.precursor_patterns
+      );
+
+      console.log(
+        "HSE Priorities:",
+        data.hse_priorities
+      );
+
+      alert(
+        `Analysis completed successfully!\n\n` +
+        `Reports: ${data.report_count}\n` +
+        `Precursor Patterns: ${data.precursor_count}\n` +
+        `HSE Priorities: ${data.hse_priority_count}`
+      );
+
+      setShowUploadModal(false);
+      setSelectedFile(null);
+
+    } catch (error) {
+
+      console.error(
+        "Upload analysis failed:",
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to analyze report"
+      );
+
+    } finally {
+
+      setIsAnalyzing(false);
+
+    }
+  };
+
+
 
   const high =
     safetyReports.filter(
@@ -734,16 +872,21 @@ const handleDrop = (
         Choose File
       </button>
 
-      <span
-        style={{
-          color: "#64748b",
-          fontSize: "9px",
-          whiteSpace: "nowrap",
-        }}
-      >
-        Supported formats: PDF, CSV, Excel
-      </span>
-    </div>
+              <button
+                className="primary-button"
+                disabled={!selectedFile}
+                onClick={handleAnalyze}
+                style={{
+                  opacity: selectedFile ? 1 : 0.5,
+                  cursor: selectedFile
+                    ? "pointer"
+                    : "not-allowed",
+                }}
+              >
+                {isAnalyzing
+                  ? "Analyzing..."
+                  : "Analyze Report →"}
+              </button>
 
     {/* HIDDEN INPUT */}
 

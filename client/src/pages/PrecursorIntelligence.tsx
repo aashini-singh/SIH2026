@@ -5,13 +5,14 @@ import patterns from "../data/precursor_patterns.json";
 import type {
   PrecursorPattern,
   SIFLevel,
+  UploadedAnalysis,
 } from "../types";
 
 import PrecursorCard from "../components/PrecursorCard";
 import PriorityBadge from "../components/PriorityBadge";
 
 
-const precursorPatterns =
+const defaultPrecursorPatterns =
   patterns as PrecursorPattern[];
 
 
@@ -19,8 +20,13 @@ type Filter =
   | "ALL"
   | SIFLevel;
 
+interface PrecursorIntelligenceProps {
+  uploadedAnalysis: UploadedAnalysis | null;
+}
 
-export default function PrecursorIntelligence() {
+export default function PrecursorIntelligence({
+  uploadedAnalysis,
+}: PrecursorIntelligenceProps) {
 
   const [priorityFilter, setPriorityFilter] =
     useState<Filter>("ALL");
@@ -31,6 +37,9 @@ export default function PrecursorIntelligence() {
   const [selectedPattern, setSelectedPattern] =
     useState<PrecursorPattern | null>(null);
 
+  const precursorPatterns =
+    uploadedAnalysis?.precursor_patterns ??
+    defaultPrecursorPatterns;
 
   /*
    * KPI calculations
@@ -122,6 +131,7 @@ export default function PrecursorIntelligence() {
     }, [
       search,
       priorityFilter,
+      precursorPatterns,
     ]);
 
 

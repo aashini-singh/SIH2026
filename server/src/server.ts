@@ -1,11 +1,19 @@
 import express from "express";
 import cors from "cors";
 import axios from "axios";
+import multer from "multer";
+import FormData from "form-data";
 
 const app = express();
 
 const PORT = 5000;
 const FASTAPI_URL = "http://127.0.0.1:8000";
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 
 app.use(cors());
 app.use(express.json());
@@ -115,6 +123,72 @@ app.get("/api/reports", async (req, res) => {
     });
   }
 });
+
+// Upload safety report
+app.post(
+  "/api/reports/upload",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: "No file uploaded",
+        });
+      }
+
+      const allowedExtensions = [
+        ".pdf",
+        ".csv",
+        ".xlsx",
+        ".xls",
+      ];
+
+      const fileName = req.file.originalname;
+
+      const extension =
+        "." + fileName.split(".").pop()?.toLowerCase();
+
+      if (!allowedExtensions.includes(extension)) {
+        return res.status(400).json({
+          error: "Unsupported file type",
+          supported: ["PDF", "CSV", "XLSX", "XLS"],
+        });
+      }
+
+      const form = new FormData();
+
+      form.append("file", req.file.buffer, {
+        filename: fileName,
+        contentType: req.file.mimetype,
+      });
+
+      const response = await axios.post(
+        `${FASTAPI_URL}/reports/upload`,
+        form,
+        {
+          headers: {
+            ...form.getHeaders(),
+          },
+          maxBodyLength: Infinity,
+        }
+      );
+
+      res.json(response.data);
+
+    } catch (error: any) {
+      console.error(
+        "Upload/AI service error:",
+        error.response?.data || error.message
+      );
+
+      res.status(500).json({
+        error: "Unable to analyze uploaded report",
+        details:
+          error.response?.data || "AI service unavailable",
+      });
+    }
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`Node/Express server running on http://localhost:${PORT}`);

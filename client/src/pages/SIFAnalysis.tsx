@@ -5,16 +5,22 @@ import reports from "../data/sif_classified_reports.json";
 import type {
   SafetyReport,
   SIFLevel,
+  UploadedAnalysis,
 } from "../types";
 
 import SIFBadge from "../components/SIFBadge";
 
-const safetyReports =
+const defaultSafetyReports =
   reports as SafetyReport[];
 
 type FilterLevel = "ALL" | SIFLevel;
+interface SIFAnalysisProps {
+  uploadedAnalysis: UploadedAnalysis | null;
+}
 
-export default function SIFAnalysis() {
+export default function SIFAnalysis({
+  uploadedAnalysis,
+}: SIFAnalysisProps) {
 
   const [filter, setFilter] =
     useState<FilterLevel>("ALL");
@@ -22,6 +28,8 @@ export default function SIFAnalysis() {
   const [selectedReport, setSelectedReport] =
     useState<SafetyReport | null>(null);
 
+  const safetyReports =
+    uploadedAnalysis?.reports ?? defaultSafetyReports;
 
   const highReports =
     safetyReports.filter(
@@ -71,7 +79,7 @@ export default function SIFAnalysis() {
           filter
       );
 
-    }, [filter]);
+    }, [filter, safetyReports]);
 
 
   /*
@@ -113,7 +121,7 @@ export default function SIFAnalysis() {
         )
         .slice(0, 6);
 
-    }, []);
+    }, [safetyReports]);
 
 
   /*

@@ -83,3 +83,15 @@ export interface HSEPriorityItem {
 
   report_ids: string[];
 }
+
+export interface UploadedAnalysis {
+  upload_id: string;
+  filename: string;
+  file_type: string;
+  analyzed_at: string;
+  report_count: number;
+
+  reports: SafetyReport[];
+  precursor_patterns: PrecursorPattern[];
+  hse_priorities: HSEPriorityItem[];
+}

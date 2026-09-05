@@ -8,27 +8,29 @@ OUTPUT_FILE = "hse_priorities.json"
 def calculate_priority(pattern):
 
     occurrence = pattern.get(
-        "occurrence_count", 0
+        "occurrence_count",
+        0
     )
 
     high_sif = pattern.get(
-        "high_sif_count", 0
+        "high_sif_count",
+        0
     )
 
     medium_sif = pattern.get(
-        "medium_sif_count", 0
+        "medium_sif_count",
+        0
     )
 
     countries = len(
         pattern.get("countries", [])
     )
 
-    # Explainable HSE priority score
     score = (
         occurrence * 3
         + high_sif * 5
         + medium_sif * 2
-        + countries * 1
+        + countries
     )
 
     return score
@@ -48,7 +50,10 @@ def get_priority(score):
     return "LOW"
 
 
-def generate_recommendation(pattern, priority):
+def generate_recommendation(
+    pattern,
+    priority
+):
 
     activity = pattern.get(
         "activity",
@@ -94,15 +99,7 @@ def generate_recommendation(pattern, priority):
     )
 
 
-def main():
-
-    with open(
-        INPUT_FILE,
-        "r",
-        encoding="utf-8"
-    ) as f:
-
-        patterns = json.load(f)
+def prioritize_hse(patterns):
 
     priorities = []
 
@@ -165,7 +162,6 @@ def main():
                 pattern.get("report_ids", [])
         })
 
-    # Highest priority first
     priorities.sort(
         key=lambda x: (
             x["hse_priority_score"],
@@ -175,13 +171,29 @@ def main():
         reverse=True
     )
 
-    # Ranking
     for rank, item in enumerate(
         priorities,
         start=1
     ):
 
         item["priority_rank"] = rank
+
+    return priorities
+
+
+def main():
+
+    with open(
+        INPUT_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        patterns = json.load(f)
+
+    priorities = prioritize_hse(
+        patterns
+    )
 
     with open(
         OUTPUT_FILE,
@@ -204,61 +216,9 @@ def main():
         f"Patterns analyzed : {len(patterns)}"
     )
 
-    print("\nTOP HSE PRIORITIES")
-    print("-" * 60)
-
-    for item in priorities[:10]:
-
-        print(
-            f"\n#{item['priority_rank']} "
-            f"{item['priority']}"
-        )
-
-        print(
-            f"   Pattern       : "
-            f"{item['pattern_id']}"
-        )
-
-        print(
-            f"   Activity      : "
-            f"{item['activity']}"
-        )
-
-        print(
-            f"   Hazard        : "
-            f"{item['hazard']}"
-        )
-
-        print(
-            f"   Occurrences   : "
-            f"{item['occurrence_count']}"
-        )
-
-        print(
-            f"   HIGH SIF      : "
-            f"{item['high_sif_count']}"
-        )
-
-        print(
-            f"   Countries     : "
-            f"{', '.join(item['countries'])}"
-        )
-
-        print(
-            f"   HSE score     : "
-            f"{item['hse_priority_score']}"
-        )
-
-        print(
-            f"   Recommendation:"
-        )
-
-        print(
-            f"   {item['recommendation']}"
-        )
-
-    print("\nOutput saved to:")
-    print(OUTPUT_FILE)
+    print(
+        f"\nOutput saved to: {OUTPUT_FILE}"
+    )
 
 
 if __name__ == "__main__":

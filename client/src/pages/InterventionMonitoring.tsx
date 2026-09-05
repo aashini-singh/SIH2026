@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import type { UploadedAnalysis } from "../types";
 
 type Priority = {
   priority_rank: number;
@@ -24,75 +25,141 @@ type InterventionData = {
   related_reports: any[];
 };
 
-const API_URL = "http://localhost:5000/api";
+interface InterventionMonitoringProps {
+  uploadedAnalysis: UploadedAnalysis | null;
+}
 
-export default function InterventionMonitoring() {
-  const [priorities, setPriorities] = useState<Priority[]>([]);
-  const [selected, setSelected] = useState<InterventionData | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function InterventionMonitoring({
+  uploadedAnalysis,
+}: InterventionMonitoringProps) {
+  const [selected, setSelected] =
+    useState<InterventionData | null>(null);
+
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetch(`${API_URL}/interventions/priorities`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch priorities");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setPriorities(data.priorities || []);
+  /*
+   * IMPORTANT:
+   * Intervention Monitoring uses the SAME uploaded analysis
+   * that is being used by Overview, SIF, Precursor and HSE pages.
+   */
 
-        if (data.priorities?.length > 0) {
-          loadIntervention(data.priorities[0].pattern_id);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Unable to connect to FastAPI.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+  const priorities: Priority[] =
+    uploadedAnalysis?.hse_priorities ?? [];
 
-  const loadIntervention = async (patternId: string) => {
-    try {
-      const res = await fetch(
-        `${API_URL}/interventions/${patternId}`
+  const precursorPatterns =
+    uploadedAnalysis?.precursor_patterns ?? [];
+
+  const safetyReports =
+    uploadedAnalysis?.reports ?? [];
+
+  /*
+   * Select one uploaded HSE priority.
+   * We build the intervention context directly from
+   * uploadedAnalysis instead of fetching old/static priorities.
+   */
+
+  const loadIntervention = (patternId: string) => {
+    const priority = priorities.find(
+      (item) => item.pattern_id === patternId
+    );
+
+    if (!priority) {
+      setError(
+        "Selected precursor pattern was not found in the uploaded analysis."
       );
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch intervention data");
-      }
-
-      const data = await res.json();
-      setSelected(data);
-    } catch (err) {
-      console.error(err);
-      setError("Unable to load intervention details.");
+      setSelected(null);
+      return;
     }
+
+    const relatedReports = safetyReports.filter((report) =>
+      priority.report_ids.includes(report.report_id)
+    );
+
+    setSelected({
+      pattern_id: patternId,
+      hse_priority: priority,
+      precursor: priority,
+      related_reports: relatedReports,
+    });
+
+    setError("");
   };
 
-  if (loading) {
+  /*
+   * No uploaded analysis yet.
+   */
+
+  if (!uploadedAnalysis) {
     return (
-      <div className="p-8">
-        <p className="text-gray-500">Loading intervention data...</p>
+      <div className="space-y-6 p-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Intervention Monitoring
+          </h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Track HSE interventions and monitor observed trends in
+            future safety reports.
+          </p>
+        </div>
+
+        {/* Empty State */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+          <div className="flex items-start gap-3">
+            <div className="text-xl">⚠️</div>
+
+            <div>
+              <h2 className="font-semibold text-amber-900">
+                No Uploaded Analysis
+              </h2>
+
+              <p className="mt-1 text-sm text-amber-800">
+                Upload and analyze a safety report first. Intervention
+                monitoring will then use the uploaded precursor patterns
+                and HSE priorities.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  /*
+   * Error state
+   */
+
   if (error) {
     return (
-      <div className="p-8">
+      <div className="space-y-6 p-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Intervention Monitoring
+          </h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Track HSE interventions and monitor observed trends in
+            future safety reports.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-red-200 bg-red-50 p-5">
           <h2 className="font-semibold text-red-700">
-            Connection Error
+            Monitoring Error
           </h2>
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-          <p className="mt-2 text-xs text-gray-500">
-            Make sure FastAPI is running on port 8000.
+
+          <p className="mt-1 text-sm text-red-600">
+            {error}
           </p>
+
+          <button
+            className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            onClick={() => setError("")}
+          >
+            Dismiss
+          </button>
         </div>
       </div>
     );
@@ -132,6 +199,38 @@ export default function InterventionMonitoring() {
         </div>
       </div>
 
+      {/* Uploaded Analysis Info */}
+      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
+              Active Analysis
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-green-900">
+              {uploadedAnalysis.filename}
+            </p>
+          </div>
+
+          <div className="flex gap-4 text-xs text-green-800">
+            <span>
+              Reports:{" "}
+              <strong>{uploadedAnalysis.report_count}</strong>
+            </span>
+
+            <span>
+              Precursors:{" "}
+              <strong>{precursorPatterns.length}</strong>
+            </span>
+
+            <span>
+              HSE Priorities:{" "}
+              <strong>{priorities.length}</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Priority Selection */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
@@ -150,55 +249,79 @@ export default function InterventionMonitoring() {
 
           <div className="max-h-[600px] overflow-y-auto">
 
-            {priorities.map((item) => (
-              <button
-                key={item.pattern_id}
-                onClick={() => loadIntervention(item.pattern_id)}
-                className={`w-full border-b border-gray-100 p-4 text-left transition hover:bg-gray-50 ${
-                  selected?.pattern_id === item.pattern_id
-                    ? "bg-gray-50"
-                    : ""
-                }`}
-              >
-
-                <div className="flex items-center justify-between">
-
-                  <span className="font-semibold text-gray-900">
-                    {item.pattern_id}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      item.priority === "CRITICAL"
-                        ? "bg-red-100 text-red-700"
-                        : item.priority === "HIGH"
-                        ? "bg-orange-100 text-orange-700"
-                        : item.priority === "MEDIUM"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {item.priority}
-                  </span>
-
-                </div>
-
-                <p className="mt-2 line-clamp-2 text-xs text-gray-500">
-                  {item.activity}
+            {priorities.length === 0 ? (
+              <div className="p-5">
+                <p className="text-sm text-gray-500">
+                  No HSE priorities were identified in this uploaded
+                  analysis.
                 </p>
+              </div>
+            ) : (
+              priorities.map((item) => (
+                <button
+                  key={item.pattern_id}
+                  onClick={() =>
+                    loadIntervention(item.pattern_id)
+                  }
+                  className={`w-full border-b border-gray-100 p-4 text-left transition hover:bg-gray-50 ${
+                    selected?.pattern_id === item.pattern_id
+                      ? "bg-gray-50"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
 
-                <div className="mt-2 text-xs text-gray-400">
-                  HSE Score: {item.hse_priority_score}
-                </div>
+                    <span className="font-semibold text-gray-900">
+                      {item.pattern_id}
+                    </span>
 
-              </button>
-            ))}
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        item.priority === "CRITICAL"
+                          ? "bg-red-100 text-red-700"
+                          : item.priority === "HIGH"
+                          ? "bg-orange-100 text-orange-700"
+                          : item.priority === "MEDIUM"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {item.priority}
+                    </span>
+
+                  </div>
+
+                  <p className="mt-2 line-clamp-2 text-xs text-gray-500">
+                    {item.activity}
+                  </p>
+
+                  <div className="mt-2 text-xs text-gray-400">
+                    HSE Score: {item.hse_priority_score}
+                  </div>
+                </button>
+              ))
+            )}
 
           </div>
         </div>
 
         {/* Details */}
         <div className="space-y-6 lg:col-span-2">
+
+          {!selected && (
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+              <div className="text-3xl">🎯</div>
+
+              <h2 className="mt-3 text-lg font-semibold text-gray-900">
+                Select an HSE Priority
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Select a precursor pattern from the uploaded analysis
+                to review its intervention context.
+              </p>
+            </div>
+          )}
 
           {selected && (
             <>
@@ -219,7 +342,17 @@ export default function InterventionMonitoring() {
                       </h2>
                     </div>
 
-                    <span className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
+                    <span
+                      className={`rounded-full px-4 py-2 text-sm font-bold ${
+                        selected.hse_priority.priority === "CRITICAL"
+                          ? "bg-red-100 text-red-700"
+                          : selected.hse_priority.priority === "HIGH"
+                          ? "bg-orange-100 text-orange-700"
+                          : selected.hse_priority.priority === "MEDIUM"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
                       {selected.hse_priority.priority}
                     </span>
 
@@ -234,6 +367,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs text-gray-500">
                       HSE Priority Score
                     </p>
+
                     <p className="mt-1 text-2xl font-bold text-gray-900">
                       {selected.hse_priority.hse_priority_score}
                     </p>
@@ -243,6 +377,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs text-gray-500">
                       Occurrences
                     </p>
+
                     <p className="mt-1 text-2xl font-bold text-gray-900">
                       {selected.hse_priority.occurrence_count}
                     </p>
@@ -252,6 +387,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs text-gray-500">
                       High SIF
                     </p>
+
                     <p className="mt-1 text-2xl font-bold text-red-600">
                       {selected.hse_priority.high_sif_count}
                     </p>
@@ -261,6 +397,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs text-gray-500">
                       Reports
                     </p>
+
                     <p className="mt-1 text-2xl font-bold text-gray-900">
                       {selected.hse_priority.report_ids.length}
                     </p>
@@ -275,6 +412,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Activity
                     </p>
+
                     <p className="mt-2 text-sm text-gray-800">
                       {selected.hse_priority.activity}
                     </p>
@@ -284,6 +422,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Hazard
                     </p>
+
                     <p className="mt-2 text-sm text-gray-800">
                       {selected.hse_priority.hazard}
                     </p>
@@ -293,6 +432,7 @@ export default function InterventionMonitoring() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Barrier Failure
                     </p>
+
                     <p className="mt-2 text-sm text-gray-800">
                       {selected.hse_priority.barrier_failure}
                     </p>
@@ -304,14 +444,16 @@ export default function InterventionMonitoring() {
                     </p>
 
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {selected.hse_priority.related_lsrs.map((lsr) => (
-                        <span
-                          key={lsr}
-                          className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700"
-                        >
-                          {lsr}
-                        </span>
-                      ))}
+                      {selected.hse_priority.related_lsrs.map(
+                        (lsr) => (
+                          <span
+                            key={lsr}
+                            className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700"
+                          >
+                            {lsr}
+                          </span>
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -348,7 +490,7 @@ export default function InterventionMonitoring() {
 
                     <p className="mt-1 text-sm text-gray-500">
                       No actual intervention has been recorded for this
-                      precursor pattern yet.
+                      uploaded precursor pattern yet.
                     </p>
                   </div>
 
@@ -401,32 +543,42 @@ export default function InterventionMonitoring() {
                     </p>
 
                     <h3 className="mt-1 text-lg font-semibold text-gray-900">
-                      {selected.hse_priority.report_ids.length} reports
+                      {selected.related_reports.length} reports
                     </h3>
                   </div>
 
                   <span className="text-xs text-gray-400">
-                    Evidence from analyzed safety reports
+                    Evidence from uploaded safety reports
                   </span>
 
                 </div>
 
                 <div className="mt-4 space-y-3">
 
-                  {selected.hse_priority.report_ids.map((id) => (
-                    <div
-                      key={id}
-                      className="rounded-lg border border-gray-100 bg-gray-50 p-4"
-                    >
-                      <p className="text-sm font-medium text-gray-800">
-                        {id}
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-500">
-                        Supporting evidence for {selected.pattern_id}
+                  {selected.related_reports.length === 0 ? (
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                      <p className="text-sm text-gray-500">
+                        No matching reports found in the uploaded
+                        analysis.
                       </p>
                     </div>
-                  ))}
+                  ) : (
+                    selected.related_reports.map((report) => (
+                      <div
+                        key={report.report_id}
+                        className="rounded-lg border border-gray-100 bg-gray-50 p-4"
+                      >
+                        <p className="text-sm font-medium text-gray-800">
+                          {report.report_id}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Supporting evidence for{" "}
+                          {selected.pattern_id}
+                        </p>
+                      </div>
+                    ))
+                  )}
 
                 </div>
 
@@ -435,9 +587,7 @@ export default function InterventionMonitoring() {
           )}
 
         </div>
-
       </div>
-
     </div>
   );
 }

@@ -5,13 +5,13 @@ import priorities from "../data/hse_priorities.json";
 import type {
   HSEPriorityItem,
   HSEPriorityLevel,
+  UploadedAnalysis,
 } from "../types";
-
 import PriorityBadge from "../components/PriorityBadge";
 import HSEPriorityCard from "../components/HSEPriorityCard";
 
 
-const hsePriorities =
+const defaultHSEPriorities =
   priorities as HSEPriorityItem[];
 
 
@@ -19,8 +19,13 @@ type Filter =
   | "ALL"
   | HSEPriorityLevel;
 
+interface HSEPrioritiesProps {
+  uploadedAnalysis: UploadedAnalysis | null;
+}
 
-export default function HSEPriorities() {
+export default function HSEPriorities({
+  uploadedAnalysis,
+}: HSEPrioritiesProps) {
 
   const [filter, setFilter] =
     useState<Filter>("ALL");
@@ -31,6 +36,9 @@ export default function HSEPriorities() {
   const [selectedPriority, setSelectedPriority] =
     useState<HSEPriorityItem | null>(null);
 
+  const hsePriorities =
+    uploadedAnalysis?.hse_priorities ??
+    defaultHSEPriorities;
 
   /* =========================
      KPI DATA
@@ -96,7 +104,7 @@ export default function HSEPriorities() {
         }
       );
 
-    }, [search, filter]);
+    }, [search, filter, hsePriorities]);
 
 
   /* =========================

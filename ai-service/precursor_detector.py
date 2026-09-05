@@ -8,11 +8,17 @@ OUTPUT_FILE = "precursor_patterns.json"
 
 
 def extract_field(text, field_name):
+
     if not text:
         return None
 
     pattern = rf"{re.escape(field_name)}\s*:\s*(.*)"
-    match = re.search(pattern, text, re.IGNORECASE)
+
+    match = re.search(
+        pattern,
+        text,
+        re.IGNORECASE
+    )
 
     if not match:
         return None
@@ -31,6 +37,7 @@ def extract_field(text, field_name):
 
 
 def clean(value):
+
     if value is None:
         return None
 
@@ -49,9 +56,6 @@ def clean(value):
 
 
 def normalize_key(value):
-    """
-    Makes grouping more stable.
-    """
 
     if not value:
         return "Unknown"
@@ -59,10 +63,7 @@ def normalize_key(value):
     return value.strip().lower()
 
 
-def main():
-
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
-        reports = json.load(f)
+def detect_precursors(reports):
 
     patterns = defaultdict(lambda: {
         "report_ids": [],
@@ -77,8 +78,6 @@ def main():
 
     for report in reports:
 
-        # IMPORTANT:
-        # Your actual JSON uses normalized_extraction
         extraction = report.get(
             "normalized_extraction",
             {}
@@ -124,24 +123,10 @@ def main():
         # -----------------------------------------
         # PRECURSOR KEY
         # -----------------------------------------
-        #
-        # Country is NOT part of the key.
-        #
-        # This allows the same precursor to appear
-        # across different countries.
-        #
 
-        activity_key = normalize_key(
-            activity
-        )
-
-        hazard_key = normalize_key(
-            hazard
-        )
-
-        barrier_key = normalize_key(
-            barrier
-        )
+        activity_key = normalize_key(activity)
+        hazard_key = normalize_key(hazard)
+        barrier_key = normalize_key(barrier)
 
         key = (
             activity_key,
@@ -150,7 +135,7 @@ def main():
         )
 
         # -----------------------------------------
-        # Store report information
+        # STORE INFORMATION
         # -----------------------------------------
 
         patterns[key]["report_ids"].append(
@@ -158,58 +143,39 @@ def main():
         )
 
         if country:
-            patterns[key]["countries"].append(
-                country
-            )
+            patterns[key]["countries"].append(country)
 
         if activity:
-            patterns[key]["activities"].append(
-                activity
-            )
+            patterns[key]["activities"].append(activity)
 
         if hazard:
-            patterns[key]["hazards"].append(
-                hazard
-            )
+            patterns[key]["hazards"].append(hazard)
 
         if primary_lsr:
-            patterns[key]["lsrs"].append(
-                primary_lsr
-            )
+            patterns[key]["lsrs"].append(primary_lsr)
 
         if secondary_lsr:
-            patterns[key]["lsrs"].append(
-                secondary_lsr
-            )
+            patterns[key]["lsrs"].append(secondary_lsr)
 
         if barrier:
-            patterns[key]["barrier_failures"].append(
-                barrier
-            )
+            patterns[key]["barrier_failures"].append(barrier)
 
-        sif_level = sif.get(
-            "sif_level"
-        )
+        sif_level = sif.get("sif_level")
 
         if sif_level:
             patterns[key]["sif_levels"].append(
                 sif_level
             )
 
-        score = sif.get(
-            "score"
-        )
+        # IMPORTANT:
+        # SIF classifier uses "sif_score"
+        score = sif.get("sif_score")
 
-        if isinstance(
-            score,
-            (int, float)
-        ):
-            patterns[key]["scores"].append(
-                score
-            )
+        if isinstance(score, (int, float)):
+            patterns[key]["scores"].append(score)
 
     # -----------------------------------------
-    # Build precursor results
+    # BUILD RESULTS
     # -----------------------------------------
 
     precursor_results = []
@@ -219,23 +185,21 @@ def main():
         start=1
     ):
 
-        activity_key, hazard_key, barrier_key = key
-
         occurrence_count = len(
             data["report_ids"]
         )
 
-        high_count = data[
-            "sif_levels"
-        ].count("HIGH")
+        high_count = data["sif_levels"].count(
+            "HIGH"
+        )
 
-        medium_count = data[
-            "sif_levels"
-        ].count("MEDIUM")
+        medium_count = data["sif_levels"].count(
+            "MEDIUM"
+        )
 
-        low_count = data[
-            "sif_levels"
-        ].count("LOW")
+        low_count = data["sif_levels"].count(
+            "LOW"
+        )
 
         unique_countries = sorted(
             set(data["countries"])
@@ -245,12 +209,10 @@ def main():
             set(data["lsrs"])
         )
 
-        # Average SIF score
         avg_score = (
             round(
                 sum(data["scores"])
-                /
-                len(data["scores"]),
+                / len(data["scores"]),
                 2
             )
             if data["scores"]
@@ -258,12 +220,8 @@ def main():
         )
 
         # -----------------------------------------
-        # PRIORITY SCORE
+        # PRECURSOR PRIORITY SCORE
         # -----------------------------------------
-        #
-        # Frequency matters most.
-        # HIGH SIF adds extra importance.
-        #
 
         priority_score = (
             occurrence_count * 2
@@ -271,14 +229,8 @@ def main():
             + medium_count
         )
 
-        # Bonus if pattern appears across
-        # multiple countries.
         if len(unique_countries) >= 2:
             priority_score += 2
-
-        # -----------------------------------------
-        # Priority classification
-        # -----------------------------------------
 
         if priority_score >= 12:
             priority = "HIGH"
@@ -288,10 +240,6 @@ def main():
 
         else:
             priority = "LOW"
-
-        # -----------------------------------------
-        # Human readable names
-        # -----------------------------------------
 
         activity_display = (
             data["activities"][0]
@@ -357,7 +305,7 @@ def main():
         })
 
     # -----------------------------------------
-    # Sort by priority
+    # SORT
     # -----------------------------------------
 
     precursor_results.sort(
@@ -369,16 +317,28 @@ def main():
         reverse=True
     )
 
-    # Add ranking
     for rank, pattern in enumerate(
         precursor_results,
         start=1
     ):
         pattern["rank"] = rank
 
-    # -----------------------------------------
-    # Save
-    # -----------------------------------------
+    return precursor_results
+
+
+def main():
+
+    with open(
+        INPUT_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        reports = json.load(f)
+
+    precursor_results = detect_precursors(
+        reports
+    )
 
     with open(
         OUTPUT_FILE,
@@ -393,14 +353,8 @@ def main():
             ensure_ascii=False
         )
 
-    # -----------------------------------------
-    # Terminal output
-    # -----------------------------------------
-
     print("\n" + "=" * 60)
-    print(
-        "PRECURSOR PATTERN DETECTION COMPLETED"
-    )
+    print("PRECURSOR PATTERN DETECTION COMPLETED")
     print("=" * 60)
 
     print(
@@ -408,67 +362,12 @@ def main():
     )
 
     print(
-        f"Patterns detected : "
-        f"{len(precursor_results)}"
+        f"Patterns detected : {len(precursor_results)}"
     )
 
-    print("\nTOP PRECURSOR PATTERNS")
-    print("-" * 60)
-
-    for pattern in precursor_results[:10]:
-
-        print(
-            f"\n{pattern['pattern_id']} "
-            f"→ {pattern['priority']}"
-        )
-
-        print(
-            f"   Activity      : "
-            f"{pattern['activity']}"
-        )
-
-        print(
-            f"   Hazard        : "
-            f"{pattern['hazard']}"
-        )
-
-        print(
-            f"   Barrier       : "
-            f"{pattern['barrier_failure']}"
-        )
-
-        print(
-            f"   LSRs          : "
-            f"{', '.join(pattern['related_lsrs'])}"
-        )
-
-        print(
-            f"   Countries     : "
-            f"{', '.join(pattern['countries'])}"
-        )
-
-        print(
-            f"   Occurrences   : "
-            f"{pattern['occurrence_count']}"
-        )
-
-        print(
-            f"   HIGH SIF      : "
-            f"{pattern['high_sif_count']}"
-        )
-
-        print(
-            f"   MEDIUM SIF    : "
-            f"{pattern['medium_sif_count']}"
-        )
-
-        print(
-            f"   Priority score: "
-            f"{pattern['priority_score']}"
-        )
-
-    print("\nOutput saved to:")
-    print(OUTPUT_FILE)
+    print(
+        f"\nOutput saved to: {OUTPUT_FILE}"
+    )
 
 
 if __name__ == "__main__":
