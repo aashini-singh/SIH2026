@@ -36,39 +36,42 @@ const hsePriorities =
 export default function Overview() {
 
     const [showUploadModal, setShowUploadModal] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
+const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [isDragging, setIsDragging] = useState(false);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const allowedTypes = [
-      ".pdf",
-      ".csv",
-      ".xlsx",
-      ".xls",
-    ];
+const allowedTypes = [".pdf", ".csv", ".xlsx", ".xls"];
 
-  const handleFile = (file: File) => {
-    const extension = "." + file.name.split(".").pop()?.toLowerCase();
+const handleFile = (file: File) => {
+  const extension =
+    "." + file.name.split(".").pop()?.toLowerCase();
 
-    if (!allowedTypes.includes(extension)) {
-      alert("Please upload a PDF, CSV, XLSX or XLS file.");
-      return;
-    }
+  if (!allowedTypes.includes(extension)) {
+    alert("Please upload a PDF, CSV, XLSX or XLS file.");
+    return;
+  }
 
-    setSelectedFile(file);
-  };
+  if (file.size > 10 * 1024 * 1024) {
+    alert("File size must be less than 10 MB.");
+    return;
+  }
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(false);
+  setSelectedFile(file);
+};
 
-    const file = event.dataTransfer.files?.[0];
+const handleDrop = (
+  event: React.DragEvent<HTMLDivElement>
+) => {
+  event.preventDefault();
+  setIsDragging(false);
 
-    if (file) {
-      handleFile(file);
-    }
-  };
+  const file = event.dataTransfer.files?.[0];
+
+  if (file) {
+    handleFile(file);
+  }
+};
 
   const high =
     safetyReports.filter(
@@ -511,261 +514,339 @@ export default function Overview() {
       </section>
             {/* UPLOAD MODAL */}
 
-      {showUploadModal && (
+ {/* ================= ANALYZE SAFETY REPORT ================= */}
+
+{/* ================= ANALYZE SAFETY REPORT ================= */}
+
+<section
+  style={{
+    width: "100%",
+    background: "#fffdf8",
+    border: "1px solid #f0d58a",
+    borderRadius: "18px",
+    padding: "20px",
+    marginBottom: "20px",
+    boxSizing: "border-box",
+  }}
+>
+  {/* HEADER */}
+
+  <div
+    style={{
+      marginBottom: "16px",
+    }}
+  >
+    <h2
+      style={{
+        margin: 0,
+        color: "#111827",
+        fontSize: "17px",
+        fontWeight: 700,
+      }}
+    >
+      Analyze Safety Report
+    </h2>
+
+    <p
+      style={{
+        margin: "5px 0 0",
+        color: "#64748b",
+        fontSize: "12px",
+      }}
+    >
+      Upload a safety report to identify SIF potential, precursor patterns
+      and HSE priorities.
+    </p>
+  </div>
+
+  {/* UPLOAD BOX */}
+
+  <div
+    onDragOver={(event) => {
+      event.preventDefault();
+      setIsDragging(true);
+    }}
+    onDragLeave={() => {
+      setIsDragging(false);
+    }}
+    onDrop={handleDrop}
+    style={{
+      width: "100%",
+      height: "102px",
+      border: isDragging
+        ? "2px solid #d99b00"
+        : "1.5px dashed #e7c96b",
+      borderRadius: "13px",
+      background: isDragging ? "#fff8dc" : "#fffefb",
+      display: "flex",
+      alignItems: "center",
+      overflow: "hidden",
+      boxSizing: "border-box",
+    }}
+  >
+
+    {/* LEFT */}
+
+    <div
+      onClick={() => fileInputRef.current?.click()}
+      style={{
+        flex: 1,
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: "18px",
+        padding: "0 24px",
+        cursor: "pointer",
+        boxSizing: "border-box",
+      }}
+    >
+
+      {/* ICON */}
+
+      <div
+        style={{
+          width: "56px",
+          height: "56px",
+          minWidth: "56px",
+          borderRadius: "50%",
+          background: "#fff1c7",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <span style={{ fontSize: "27px" }}>
+          📄
+        </span>
+      </div>
+
+      {/* TEXT */}
+
+      <div>
+        <h3
+          style={{
+            margin: 0,
+            marginBottom: "4px",
+            color: "#111827",
+            fontSize: "13px",
+            fontWeight: 700,
+          }}
+        >
+          Drag & drop your report here
+        </h3>
+
+        <p
+          style={{
+            margin: 0,
+            marginBottom: "9px",
+            color: "#64748b",
+            fontSize: "11px",
+          }}
+        >
+          or click to browse from your computer
+        </p>
+
         <div
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {["PDF", "CSV", "XLSX"].map((type) => (
+            <span
+              key={type}
+              style={{
+                padding: "3px 8px",
+                borderRadius: "999px",
+                background: "#f1f5f9",
+                color: "#475569",
+                fontSize: "9px",
+                fontWeight: 700,
+              }}
+            >
+              {type}
+            </span>
+          ))}
+
+          <span
+            style={{
+              color: "#94a3b8",
+              fontSize: "10px",
+              marginLeft: "2px",
+            }}
+          >
+            | Max 10 MB
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {/* DIVIDER */}
+
+    <div
+      style={{
+        width: "1px",
+        height: "58px",
+        background: "#eadfbd",
+      }}
+    />
+
+    {/* RIGHT */}
+
+    <div
+      style={{
+        width: "285px",
+        minWidth: "285px",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "12px",
+        padding: "0 18px",
+        boxSizing: "border-box",
+      }}
+    >
+
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        style={{
+          width: "148px",
+          height: "38px",
+          border: "none",
+          borderRadius: "10px",
+          background: "#fbbf24",
+          color: "#111827",
+          fontSize: "12px",
+          fontWeight: 700,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "7px",
+        }}
+      >
+        <span style={{ fontSize: "16px" }}>
+          ↥
+        </span>
+
+        Choose File
+      </button>
+
+      <span
+        style={{
+          color: "#64748b",
+          fontSize: "9px",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Supported formats: PDF, CSV, Excel
+      </span>
+    </div>
+
+    {/* HIDDEN INPUT */}
+
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".pdf,.csv,.xlsx,.xls"
+      style={{ display: "none" }}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+
+        if (file) {
+          handleFile(file);
+        }
+      }}
+    />
+  </div>
+
+  {/* SELECTED FILE */}
+
+  {selectedFile && (
+    <div
+      style={{
+        marginTop: "10px",
+        padding: "10px 13px",
+        borderRadius: "9px",
+        background: "#f0fdf4",
+        border: "1px solid #bbf7d0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "9px",
+        }}
+      >
+        <div
+          style={{
+            width: "26px",
+            height: "26px",
+            borderRadius: "50%",
+            background: "#dcfce7",
+            color: "#15803d",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px",
+            fontSize: "12px",
+            fontWeight: 700,
           }}
-          onClick={() => setShowUploadModal(false)}
         >
+          ✓
+        </div>
+
+        <div>
+          <div
+            style={{
+              color: "#166534",
+              fontSize: "11px",
+              fontWeight: 700,
+            }}
+          >
+            {selectedFile.name}
+          </div>
 
           <div
             style={{
-              width: "100%",
-              maxWidth: "620px",
-              background: "#ffffff",
-              borderRadius: "18px",
-              padding: "28px",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.2)",
+              color: "#64748b",
+              fontSize: "9px",
             }}
-            onClick={(event) => event.stopPropagation()}
           >
-
-            {/* Modal Header */}
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                marginBottom: "22px",
-              }}
-            >
-
-              <div>
-                <h2 style={{ marginBottom: "6px" }}>
-                  Upload Safety Report
-                </h2>
-
-                <p>
-                  Upload a report to start AI-assisted safety analysis.
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowUploadModal(false);
-                  setSelectedFile(null);
-                }}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  fontSize: "22px",
-                  cursor: "pointer",
-                  color: "#64748b",
-                }}
-              >
-                ✕
-              </button>
-
-            </div>
-
-
-            {/* Drag & Drop Area */}
-
-            <div
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => {
-                setIsDragging(false);
-              }}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: isDragging
-                  ? "2px solid #16a34a"
-                  : "2px dashed #cbd5e1",
-
-                background: isDragging
-                  ? "#f0fdf4"
-                  : "#f8fafc",
-
-                borderRadius: "14px",
-                padding: "42px 24px",
-                textAlign: "center",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-            >
-
-              <div
-                style={{
-                  fontSize: "42px",
-                  marginBottom: "12px",
-                }}
-              >
-                📄
-              </div>
-
-              <h3
-                style={{
-                  marginBottom: "8px",
-                  color: "#0f172a",
-                }}
-              >
-                Drag & drop your report here
-              </h3>
-
-              <p
-                style={{
-                  marginBottom: "16px",
-                  color: "#64748b",
-                }}
-              >
-                or click to browse files
-              </p>
-
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "6px 12px",
-                  borderRadius: "999px",
-                  background: "#ecfdf5",
-                  color: "#15803d",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-              >
-                PDF • CSV • XLSX • XLS
-              </span>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.csv,.xlsx,.xls"
-                style={{ display: "none" }}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-
-                  if (file) {
-                    handleFile(file);
-                  }
-                }}
-              />
-
-            </div>
-
-
-            {/* Selected File */}
-
-            {selectedFile && (
-              <div
-                style={{
-                  marginTop: "18px",
-                  padding: "14px 16px",
-                  borderRadius: "10px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                }}
-              >
-
-                <div>
-                  <strong
-                    style={{
-                      display: "block",
-                      color: "#166534",
-                      fontSize: "14px",
-                    }}
-                  >
-                    ✓ {selectedFile.name}
-                  </strong>
-
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#64748b",
-                    }}
-                  >
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "#64748b",
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove
-                </button>
-
-              </div>
-            )}
-
-
-            {/* Modal Footer */}
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "12px",
-                marginTop: "24px",
-              }}
-            >
-
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setShowUploadModal(false);
-                  setSelectedFile(null);
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="primary-button"
-                disabled={!selectedFile}
-                onClick={() => {
-                  if (!selectedFile) return;
-
-                  alert(
-                    "File selected successfully. Backend analysis will be connected next."
-                  );
-                }}
-                style={{
-                  opacity: selectedFile ? 1 : 0.5,
-                  cursor: selectedFile
-                    ? "pointer"
-                    : "not-allowed",
-                }}
-              >
-                Analyze Report →
-              </button>
-
-            </div>
-
+            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
           </div>
-
         </div>
-      )}          
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          setSelectedFile(null);
+
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }}
+        style={{
+          border: "none",
+          background: "transparent",
+          color: "#64748b",
+          fontSize: "10px",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        Remove
+      </button>
     </div>
+  )}
+</section>
+</div>       
+    
   );
 }
